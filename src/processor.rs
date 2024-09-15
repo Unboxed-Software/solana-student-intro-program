@@ -1,10 +1,9 @@
 use crate::error::StudentIntroError;
 use crate::instruction::IntroInstruction;
 use crate::state::StudentInfo;
-use borsh::BorshSerialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    borsh::try_from_slice_unchecked,
     entrypoint::ProgramResult,
     msg,
     program::invoke_signed,
@@ -83,7 +82,7 @@ pub fn add_student_intro(
 
     msg!("unpacking state account");
     let mut account_data =
-        try_from_slice_unchecked::<StudentInfo>(&user_account.data.borrow()).unwrap();
+        StudentInfo::try_from_slice(&user_account.data.borrow())?;
     msg!("borrowed account data");
 
     msg!("checking if account is already initialized");
@@ -118,7 +117,7 @@ pub fn update_student_intro(
 
     msg!("unpacking state account");
     let mut account_data =
-        try_from_slice_unchecked::<StudentInfo>(&user_account.data.borrow()).unwrap();
+        StudentInfo::try_from_slice(&user_account.data.borrow())?;
     msg!("borrowed account data");
 
     msg!("checking if account is initialized");
