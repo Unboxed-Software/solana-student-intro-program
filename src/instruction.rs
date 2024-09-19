@@ -14,21 +14,23 @@ struct StudentIntroPayload {
 
 impl IntroInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        let (variant, rest) = input
+        let (&discriminator, rest) = input
             .split_first()
             .ok_or(ProgramError::InvalidInstructionData)?;
-        let payload = StudentIntroPayload::try_from_slice(rest).unwrap();
 
-        Ok(match variant {
-            0 => Self::InitUserInput {
+        let payload = StudentIntroPayload::try_from_slice(rest)
+            .map_err(|_| ProgramError::InvalidInstructionData)?;
+
+        match discriminator {
+            0 => Ok(Self::InitUserInput {
                 name: payload.name,
                 message: payload.message,
-            },
-            1 => Self::UpdateStudentIntro {
+            }),
+            1 => Ok(Self::UpdateStudentIntro {
                 name: payload.name,
                 message: payload.message,
-            },
+            }),
             _ => return Err(ProgramError::InvalidInstructionData),
-        })
+        }
     }
 }

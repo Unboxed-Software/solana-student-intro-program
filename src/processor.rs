@@ -1,10 +1,9 @@
 use crate::error::StudentIntroError;
 use crate::instruction::IntroInstruction;
 use crate::state::StudentInfo;
-use borsh::BorshSerialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    borsh::try_from_slice_unchecked,
     entrypoint::ProgramResult,
     msg,
     program::invoke_signed,
@@ -38,11 +37,13 @@ pub fn add_student_intro(
     name: String,
     message: String,
 ) -> ProgramResult {
-    msg!("Adding student intro...");
-    msg!("Name: {}", name);
-    msg!("Message: {}", message);
-    let account_info_iter = &mut accounts.iter();
+    msg!(
+        "Adding student intro... Name: {}, Message: {}",
+        name,
+        message
+    );
 
+    let account_info_iter = &mut accounts.iter();
     let initializer = next_account_info(account_info_iter)?;
     let user_account = next_account_info(account_info_iter)?;
     let system_program = next_account_info(account_info_iter)?;
@@ -58,8 +59,8 @@ pub fn add_student_intro(
         msg!("Data length is larger than 1000 bytes");
         return Err(StudentIntroError::InvalidDataLength.into());
     }
-    let account_len: usize = 1000;
 
+    let account_len: usize = 1000;
     let rent = Rent::get()?;
     let rent_lamports = rent.minimum_balance(account_len);
 
@@ -81,12 +82,9 @@ pub fn add_student_intro(
 
     msg!("PDA created: {}", pda);
 
-    msg!("unpacking state account");
-    let mut account_data =
-        try_from_slice_unchecked::<StudentInfo>(&user_account.data.borrow()).unwrap();
-    msg!("borrowed account data");
+    msg!("Unpacking state account");
+    let mut account_data = StudentInfo::try_from_slice(&user_account.data.borrow())?;
 
-    msg!("checking if account is already initialized");
     if account_data.is_initialized() {
         msg!("Account already initialized");
         return Err(ProgramError::AccountAlreadyInitialized);
@@ -95,9 +93,10 @@ pub fn add_student_intro(
     account_data.name = name;
     account_data.msg = message;
     account_data.is_initialized = true;
-    msg!("serializing account");
+
+    msg!("Serializing account");
     account_data.serialize(&mut &mut user_account.data.borrow_mut()[..])?;
-    msg!("state account serialized");
+    msg!("State account serialized");
 
     Ok(())
 }
@@ -108,20 +107,19 @@ pub fn update_student_intro(
     name: String,
     message: String,
 ) -> ProgramResult {
-    msg!("Updating student intro...");
-    msg!("Name: {}", name);
-    msg!("Message: {}", message);
-    let account_info_iter = &mut accounts.iter();
+    msg!(
+        "Updating student intro... Name: {}, Message: {}",
+        name,
+        message
+    );
 
+    let account_info_iter = &mut accounts.iter();
     let initializer = next_account_info(account_info_iter)?;
     let user_account = next_account_info(account_info_iter)?;
 
-    msg!("unpacking state account");
-    let mut account_data =
-        try_from_slice_unchecked::<StudentInfo>(&user_account.data.borrow()).unwrap();
-    msg!("borrowed account data");
+    msg!("Unpacking state account");
+    let mut account_data = StudentInfo::try_from_slice(&user_account.data.borrow())?;
 
-    msg!("checking if account is initialized");
     if !account_data.is_initialized() {
         msg!("Account is not initialized");
         return Err(StudentIntroError::UninitializedAccount.into());
@@ -136,6 +134,7 @@ pub fn update_student_intro(
         msg!("Invalid seeds for PDA");
         return Err(StudentIntroError::InvalidPDA.into());
     }
+
     let update_len: usize = 1 + (4 + account_data.name.len()) + (4 + message.len());
     if update_len > 1000 {
         msg!("Data length is larger than 1000 bytes");
@@ -144,9 +143,9 @@ pub fn update_student_intro(
 
     account_data.name = account_data.name;
     account_data.msg = message;
-    msg!("serializing account");
+    msg!("Serializing account");
     account_data.serialize(&mut &mut user_account.data.borrow_mut()[..])?;
-    msg!("state account serialized");
+    msg!("State account serialized");
 
     Ok(())
 }
